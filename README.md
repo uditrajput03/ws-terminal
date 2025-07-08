@@ -55,30 +55,6 @@ Key components in the WS-Terminal architecture:
 - **Consumer**: The machine where the terminal is accessed
 - **Relay Server (Optional)**: An intermediary server that forwards messages between provider and consumer
 
-```mermaid
-graph TD
-    subgraph "Method 1: Direct Connection"
-    A[Provider] -->|WS Server| B[Consumer]
-    end
-    
-    subgraph "Method 2: Reverse Shell"
-    C[Consumer] -->|WS Server| D[Provider]
-    end
-    
-    subgraph "Method 3: Relay Server"
-    E[Provider] -->|Outbound WS| F[Relay Server]
-    F -->|Outbound WS| G[Consumer]
-    end
-    
-    style A fill:#f9f,stroke:#333,stroke-width:2px
-    style B fill:#bbf,stroke:#333,stroke-width:2px
-    style C fill:#bbf,stroke:#333,stroke-width:2px
-    style D fill:#f9f,stroke:#333,stroke-width:2px
-    style E fill:#f9f,stroke:#333,stroke-width:2px
-    style F fill:#bfb,stroke:#333,stroke-width:2px
-    style G fill:#bbf,stroke:#333,stroke-width:2px
-```
-
 ## Requirements
 
 1. **websocat**: A WebSocket toolkit for the command line
@@ -92,6 +68,8 @@ graph TD
 3. **Relay server** (optional):
    - Use any WebSocket relay server, or
    - Self-host the recommended relay server: [ws-relay](https://github.com/uditrajput03/ws-relay)
+
+**Reference**: [socat + websocat](https://github.com/vi/websocat/issues/108#issuecomment-800966664)
 
 > **Security Note**: Always use trusted relay servers as they will have access to your terminal commands and output. Self-hosting is strongly recommended for sensitive environments.
 
@@ -131,6 +109,17 @@ The provider hosts a WebSocket server, and the consumer connects as a client.
 ```bash
 socat file:`tty`,raw,echo=0 exec:'./websocat --binary "wss://yourserverurl:8000/" "-"'
 ```
+```mermaid
+graph LR
+    A["Consumer<br/>(Client)"] -->|WebSocket Connection| B["Provider<br/>(WebSocket Server)<br/>Port 8000"]
+    B -->|Execute Commands| C["Bash Shell"]
+    C -->|Return Output| B
+    B -->|Send Results| A
+    
+    style B fill:#e1f5fe,stroke:#0277bd,color:#01579b
+    style A fill:#f3e5f5,stroke:#9c27b0,color:#4a148c
+    style C fill:#e8f5e8,stroke:#2e7d32,color:#1b5e20
+```
 
 ### Method 2: Reverse Shell
 
@@ -146,6 +135,17 @@ The consumer hosts a WebSocket server, and the provider connects as a client.
 socat file:`tty`,raw,echo=0 exec:'./websocat --binary --exit-on-eof ws-l\:0.0.0.0\:8000 -'
 ```
 
+```mermaid
+graph LR
+    A["Consumer<br/>(WebSocket Server)<br/>Port 8000"] -->|Send Commands| B["Provider<br/>(Client)"]
+    B -->|Execute Commands| C["Bash Shell"]
+    C -->|Return Output| B
+    B -->|WebSocket Connection| A
+    
+    style A fill:#e1f5fe,stroke:#0277bd,color:#01579b
+    style B fill:#f3e5f5,stroke:#9c27b0,color:#4a148c
+    style C fill:#e8f5e8,stroke:#2e7d32,color:#1b5e20
+```
 ### Method 3: Relay Server Connection
 
 Both provider and consumer connect to an intermediary relay server.
@@ -160,6 +160,20 @@ socat file:`tty`,raw,echo=0 exec:'./websocat --binary "wss://ws-relay-anlb.onren
 ```
 **Alternatively** You can send commands to the relay server using websocket client.
 
+```mermaid
+graph LR
+    A["Consumer<br/>(Client)"] -->|WebSocket Connection| B["Relay Server<br/>(Intermediary)"]
+    B -->|Forward Commands| C["Provider<br/>(Client)"]
+    C -->|Execute Commands| D["Bash Shell"]
+    D -->|Return Output| C
+    C -->|WebSocket Connection| B
+    B -->|Forward Results| A
+    
+    style A fill:#f3e5f5,stroke:#9c27b0,color:#4a148c
+    style B fill:#fff8e1,stroke:#ff8f00,color:#e65100
+    style C fill:#f3e5f5,stroke:#9c27b0,color:#4a148c
+    style D fill:#e8f5e8,stroke:#2e7d32,color:#1b5e20
+```
 ### Docker Usage
 
 For containerized deployment of provider:
